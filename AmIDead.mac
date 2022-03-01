@@ -1,0 +1,71 @@
+| Cases to consider:
+| Buffs
+| 1. A gm could spam the worldwide buff which gives you a full set, so buff checking 0 or 1 buffs would pass
+| 2. They could have player buffs due to an MGB or for any reason the player may have buffed them
+| Equipment
+| 1. A mage could summon mod rod in toons proximity, causing the toon to autoinventory it to their mainhand
+| 2. A player could intentionally have removed an item in any slot for reasons of their own choosing
+| Inventory 
+| 1. Most slots should be equipped but if they have some empty bagslots this check should still pass
+| General - noobs may have a lot of missing gear/inventory. While this is fine for supply (since they shouldnt need until higher leverl) 
+| - this could be bad for other places we might want to use this
+
+
+sub main
+    /echo Starting...
+    /if (!${Defined[missingEquipment]}) /declare missingEquipment bool local
+    /if (!${Defined[missingInventory]}) /declare missingInventory bool local    
+    /if (!${Defined[missingBuffs]}) /declare missingBuffs bool local
+    /call check_MissingEquipment
+    /varset missingEquipment ${Macro.Return}
+    /call check_MissingInventory
+    /varset missingInventory ${Macro.Return}
+    /call check_MissingBuffs
+    /varset missingBuffs ${Macro.Return}
+
+    /echo Finishing... equipment: ${missingEquipment} , innventory: ${missingInventory} , buffs: ${missingBuffs}
+    /if (${missingEquipment} && (${missingInventory} || ${missingBuffs}) || (${missingInventory} && ${missingBuffs})) {
+        /echo I am dead.
+    } else {
+        /echo I may not be dead.
+    }
+/return false
+
+
+sub check_MissingEquipment 
+    | Check all slots but skip offhand (14), powersource (21) and ammo (22) as it would be common to not have those equipped
+    /echo Checking Equipment
+    /declare i int local 
+    /declare emptyEquipmentSlot int local
+    /for i 0 to 21
+    /if (${i} == 14) /continue
+    /if (!${Bool[${InvSlot[${i}].Item.ID}]}) {
+        /varset emptyEquipmentSlot ${Math.Calc[${emptyEquipmentSlot}+1]}
+        /echo missing equipment found at slot: ${InvSlot[${i}]}
+    }
+    /if (${emptyEquipmentSlot} > 11) /return true
+    /next i
+/return false
+
+| For this one, check how many bags they have and fail
+sub check_MissingInventory 
+/echo checking inventory
+    /declare i int local
+    /declare emptyBagSlot int local 
+    /for i 1 to 10
+    /if (!${InvSlot[pack${i}].Item.ID} || !${Bool[${InvSlot[pack${i}].Item.Container}]}) {
+        /varset emptyBagSlot ${Math.Calc[${emptyBagSlot}+1]}
+        /echo found missing bagslot ${i}
+    }
+    /if (${emptyBagSlot} > 5) /return true
+    /next i
+    /echo finished checking inventory empties found: ${emptyBagSlot} 
+/return false
+
+sub check_MissingBuffs 
+/echo checking buffs
+    /if (${Me.CountBuffs}==0 || (${Me.CountBuffs}==1 && (${Bool[${Me.Buff[Bottle of Shared Adventure]}]} || ${Bool[${Me.Buff[Bottle of Advanced Shared Adventure]}]}))) {
+        /echo Some buffs are missing
+        /return true
+    }
+/return false
